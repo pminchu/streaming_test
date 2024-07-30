@@ -1,6 +1,6 @@
 import json
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, asdict
 from typing import Any, Generator, Iterable, dict
 
 # Set up logging
@@ -30,11 +30,7 @@ class WeatherStation:
 
     def to_dict(self) -> dict[str, float]:
         """Convert the WeatherStation object to a dictionary."""
-        return {"high": self.high, "low": self.low}
-
-    def __repr__(self) -> str:
-        """Return a string representation of the WeatherStation object."""
-        return f"WeatherStation(name='{self.name}', high={self.high}, low={self.low})"
+        return asdict(self)
 
 
 class WeatherDataProcessor:
