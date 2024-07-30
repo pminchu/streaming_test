@@ -70,7 +70,6 @@ class WeatherDataProcessor:
         }
 
         logger.info(f"Generated snapshot: {snapshot}")
-
         return snapshot
 
     def process_reset(self) -> dict[str, Any]:
