@@ -9,16 +9,20 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
 # Constants
-SAMPLE_TYPE = "sample"
-CONTROL_TYPE = "control"
-SNAPSHOT_COMMAND = "snapshot"
-RESET_COMMAND = "reset"
+class MessageTypes:
+    SAMPLE_TYPE = "sample"
+    CONTROL_TYPE = "control"
+    SNAPSHOT_COMMAND = "snapshot"
+    RESET_COMMAND = "reset"
+
 
 # Keys
 STATION_NAME = "stationName"
 TEMPERATURE = "temperature"
 TIMESTAMP = "timestamp"
+SAMPLE_KEYS = {STATION_NAME, TEMPERATURE, TIMESTAMP}
 
 
 @dataclass
@@ -62,7 +66,7 @@ class WeatherDataProcessor:
             raise ValueError("No data to snapshot.")
 
         snapshot = {
-            "type": SNAPSHOT_COMMAND,
+            "type": MessageTypes.SNAPSHOT_COMMAND,
             "asOf": self.latest_timestamp,
             "stations": {
                 name: station.to_dict() for name, station in self.stations.items()
@@ -78,7 +82,7 @@ class WeatherDataProcessor:
             logger.warning("Attempted to reset with no data")
             raise ValueError("No data to reset.")
 
-        response = {"type": RESET_COMMAND, "asOf": self.latest_timestamp}
+        response = {"type": MessageTypes.RESET_COMMAND, "asOf": self.latest_timestamp}
         self.reset_weather_data()
         return response
 
@@ -90,19 +94,19 @@ class WeatherDataProcessor:
     def handle_message(self, message: dict[str, Any]) -> dict[str, Any] | None:
         """Handle incoming messages and route them to appropriate processing methods."""
         match message:
-            case {"type": SAMPLE_TYPE}:
+            case {"type": MessageTypes.SAMPLE_TYPE}:
                 self.process_sample(message)
                 return None
-            case {"type": CONTROL_TYPE, "command": command}:
-                match command:
-                    case SNAPSHOT_COMMAND:
-                        return self.process_snapshot()
-                    case RESET_COMMAND:
-                        return self.process_reset()
-                    case _:
-                        msg = f"Unknown control command: {command}"
-                        logger.error(msg)
-                        raise ValueError(msg)
+            case {
+                "type": MessageTypes.CONTROL_TYPE,
+                "command": MessageTypes.SNAPSHOT_COMMAND,
+            }:
+                return self.process_snapshot()
+            case {
+                "type": MessageTypes.CONTROL_TYPE,
+                "command": MessageTypes.RESET_COMMAND,
+            }:
+                return self.process_reset()
             case {"type": unknown_type}:
                 msg = f"Unknown message type: {unknown_type}"
                 logger.error(msg)
@@ -125,20 +129,18 @@ class WeatherDataProcessor:
             logger.info(f"Updated latest timestamp to {self.latest_timestamp}")
 
     def validate_weather_sample(self, sample: dict[str, Any]) -> None:
-        sample_keys = ["stationName", "temperature", "timestamp"]
-
-        if not sample.keys() == sample_keys:
+        if not all(key in sample for key in SAMPLE_KEYS):
             raise ValueError(
-                f"Invalid sample format - missing one or more key(s) {sample_keys}."
+                f"Invalid sample format - missing one or more key(s) {SAMPLE_KEYS}."
             )
 
         if not isinstance(sample["temperature"], (int, float)):
             raise ValueError(
-                "Invalid temperature type - expected (int, float), got {type(temperature)}"
+                f"Invalid temperature type - expected (int, float), got {type(sample['temperature'])}"
             )
-        if not not isinstance(sample["timestamp"], int):
+        if not isinstance(sample["timestamp"], int):
             raise ValueError(
-                "Invalid timestamp type - expected int, got {type(timestamp)}"
+                f"Invalid timestamp type - expected int, got {type(sample['timestamp'])}"
             )
 
 
