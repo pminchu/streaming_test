@@ -18,7 +18,7 @@ class MessageTypes:
     RESET_COMMAND = "reset"
 
 
-# Keys
+# Weather sample keys
 STATION_NAME = "stationName"
 TEMPERATURE = "temperature"
 TIMESTAMP = "timestamp"
@@ -44,7 +44,7 @@ class WeatherStation:
 
 
 class WeatherDataProcessor:
-    def __init__(self):
+    def __init__(self) -> None:
         self.stations: dict[str, WeatherStation] = {}
         self.latest_timestamp: int | None = None
 
