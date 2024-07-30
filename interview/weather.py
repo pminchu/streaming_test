@@ -98,24 +98,28 @@ class WeatherDataProcessor:
             logger.error("Received message without type")
             raise ValueError("Message type is required.")
 
-        if message["type"] == SAMPLE_TYPE:
-            self.process_sample(message)
-            return None
-        elif message["type"] == CONTROL_TYPE:
-            if "command" not in message:
-                logger.error("Received control message without command")
-                raise ValueError("Control command is required.")
-
-            if message["command"] == SNAPSHOT_COMMAND:
-                return self.process_snapshot()
-            elif message["command"] == RESET_COMMAND:
-                return self.process_reset()
-            else:
-                logger.error(f"Unknown control command: {message['command']}")
-                raise ValueError(f"Unknown control command: {message['command']}.")
-        else:
-            logger.error(f"Unknown message type: {message['type']}")
-            raise ValueError(f"Unknown message type: {message['type']}.")
+        match message:
+            case {"type": SAMPLE_TYPE}:
+                self.process_sample(message)
+                return None
+            case {"type": CONTROL_TYPE, "command": command}:
+                match command:
+                    case SNAPSHOT_COMMAND:
+                        return self.process_snapshot()
+                    case RESET_COMMAND:
+                        return self.process_reset()
+                    case _:
+                        msg = f"Unknown control command: {command}"
+                        logger.error(msg)
+                        raise ValueError(msg)
+            case {"type": unknown_type}:
+                msg = f"Unknown message type: {unknown_type}"
+                logger.error(msg)
+                raise ValueError(msg)
+            case _:
+                msg = f"Unhandled message format: {message}"
+                logger.error(msg)
+                raise ValueError(msg)
 
 
 def process_events(
