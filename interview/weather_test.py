@@ -1,5 +1,7 @@
 import unittest
-from weather import WeatherDataProcessor, WeatherStation
+
+from .weather import WeatherDataProcessor, WeatherStation
+
 
 class TestWeatherDataProcessor(unittest.TestCase):
 
@@ -9,7 +11,7 @@ class TestWeatherDataProcessor(unittest.TestCase):
             "type": "sample",
             "stationName": "Foster Weather Station",
             "timestamp": 1672531200000,
-            "temperature": 37.1
+            "temperature": 37.1,
         }
         self.snapshot_message = {"type": "control", "command": "snapshot"}
         self.reset_message = {"type": "control", "command": "reset"}
@@ -28,18 +30,22 @@ class TestWeatherDataProcessor(unittest.TestCase):
 
     def test_process_multiple_samples_same_station(self):
         self._process_sample()
-        self._process_sample({
-            "type": "sample",
-            "stationName": "Foster Weather Station",
-            "timestamp": 1672531300000,
-            "temperature": 35.0
-        })
-        self._process_sample({
-            "type": "sample",
-            "stationName": "Foster Weather Station",
-            "timestamp": 1672531400000,
-            "temperature": 40.0
-        })
+        self._process_sample(
+            {
+                "type": "sample",
+                "stationName": "Foster Weather Station",
+                "timestamp": 1672531300000,
+                "temperature": 35.0,
+            }
+        )
+        self._process_sample(
+            {
+                "type": "sample",
+                "stationName": "Foster Weather Station",
+                "timestamp": 1672531400000,
+                "temperature": 40.0,
+            }
+        )
         station_data = self.processor.stations["Foster Weather Station"]
         self.assertEqual(station_data.high, 40.0)
         self.assertEqual(station_data.low, 35.0)
@@ -47,18 +53,22 @@ class TestWeatherDataProcessor(unittest.TestCase):
 
     def test_process_multiple_stations(self):
         self._process_sample()
-        self._process_sample({
-            "type": "sample",
-            "stationName": "Oak Street Weather Station",
-            "timestamp": 1672531300000,
-            "temperature": 32.0
-        })
-        self._process_sample({
-            "type": "sample",
-            "stationName": "North Avenue Weather Station",
-            "timestamp": 1672531400000,
-            "temperature": 45.0
-        })
+        self._process_sample(
+            {
+                "type": "sample",
+                "stationName": "Oak Street Weather Station",
+                "timestamp": 1672531300000,
+                "temperature": 32.0,
+            }
+        )
+        self._process_sample(
+            {
+                "type": "sample",
+                "stationName": "North Avenue Weather Station",
+                "timestamp": 1672531400000,
+                "temperature": 45.0,
+            }
+        )
         foster_data = self.processor.stations["Foster Weather Station"]
         oak_data = self.processor.stations["Oak Street Weather Station"]
         north_data = self.processor.stations["North Avenue Weather Station"]
@@ -89,12 +99,14 @@ class TestWeatherDataProcessor(unittest.TestCase):
     def test_snapshot_after_reset(self):
         self._process_sample()
         self.processor.handle_message(self.reset_message)
-        self._process_sample({
-            "type": "sample",
-            "stationName": "New Station",
-            "timestamp": 1672531500000,
-            "temperature": 50.0
-        })
+        self._process_sample(
+            {
+                "type": "sample",
+                "stationName": "New Station",
+                "timestamp": 1672531500000,
+                "temperature": 50.0,
+            }
+        )
         snapshot = self.processor.handle_message(self.snapshot_message)
         self.assertEqual(snapshot["type"], "snapshot")
         self.assertEqual(snapshot["asOf"], 1672531500000)
@@ -120,7 +132,11 @@ class TestWeatherDataProcessor(unittest.TestCase):
             self.processor.handle_message(unknown_command)
 
     def test_missing_message_type(self):
-        missing_type_message = {"stationName": "Station 1", "timestamp": 1672531200000, "temperature": 37.1}
+        missing_type_message = {
+            "stationName": "Station 1",
+            "timestamp": 1672531200000,
+            "temperature": 37.1,
+        }
         with self.assertRaises(ValueError):
             self.processor.handle_message(missing_type_message)
 
@@ -130,19 +146,48 @@ class TestWeatherDataProcessor(unittest.TestCase):
             self.processor.handle_message(missing_command_message)
 
     def test_extreme_temperatures(self):
-        self._process_sample({"type": "sample", "stationName": "Extreme Station", "timestamp": 1672531200000, "temperature": -100.0})
-        self._process_sample({"type": "sample", "stationName": "Extreme Station", "timestamp": 1672531300000, "temperature": 150.0})
+        self._process_sample(
+            {
+                "type": "sample",
+                "stationName": "Extreme Station",
+                "timestamp": 1672531200000,
+                "temperature": -100.0,
+            }
+        )
+        self._process_sample(
+            {
+                "type": "sample",
+                "stationName": "Extreme Station",
+                "timestamp": 1672531300000,
+                "temperature": 150.0,
+            }
+        )
         station_data = self.processor.stations["Extreme Station"]
         self.assertEqual(station_data.high, 150.0)
         self.assertEqual(station_data.low, -100.0)
 
     def test_extreme_timestamps(self):
-        self._process_sample({"type": "sample", "stationName": "Timestamp Station", "timestamp": 0, "temperature": 0.0})
-        self._process_sample({"type": "sample", "stationName": "Timestamp Station", "timestamp": 9999999999999, "temperature": 100.0})
+        self._process_sample(
+            {
+                "type": "sample",
+                "stationName": "Timestamp Station",
+                "timestamp": 0,
+                "temperature": 0.0,
+            }
+        )
+        self._process_sample(
+            {
+                "type": "sample",
+                "stationName": "Timestamp Station",
+                "timestamp": 9999999999999,
+                "temperature": 100.0,
+            }
+        )
         station_data = self.processor.stations["Timestamp Station"]
         self.assertEqual(station_data.high, 100.0)
         self.assertEqual(station_data.low, 0.0)
         self.assertEqual(self.processor.latest_timestamp, 9999999999999)
+
 
 class TestWeatherStation(unittest.TestCase):
     def setUp(self):
@@ -150,8 +195,8 @@ class TestWeatherStation(unittest.TestCase):
 
     def test_initial_values(self):
         self.assertEqual(self.station.name, "Test Station")
-        self.assertEqual(self.station.high, float('-inf'))
-        self.assertEqual(self.station.low, float('inf'))
+        self.assertEqual(self.station.high, float("-inf"))
+        self.assertEqual(self.station.low, float("inf"))
 
     def test_update_single_temperature(self):
         self.station.update(20.5)
@@ -167,7 +212,10 @@ class TestWeatherStation(unittest.TestCase):
 
     def test_to_dict(self):
         self.station.update(20.5)
-        self.assertEqual(self.station.to_dict(), {"high": 20.5, "low": 20.5})
+        self.assertEqual(
+            self.station.to_dict(),
+            {"name": self.station.name, "high": 20.5, "low": 20.5},
+        )
 
     def test_repr(self):
         self.station.update(20.5)
