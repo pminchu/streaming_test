@@ -48,8 +48,14 @@ class WeatherDataProcessor:
         temperature = message["temperature"]
         timestamp = message["timestamp"]
 
-        if not isinstance(temperature, (int, float)) or not isinstance(timestamp, int):
-            raise ValueError("Invalid temperature or timestamp type.")
+        if not isinstance(temperature, (int, float)):
+            raise ValueError(
+                "Invalid temperature type - expected (int, float), got {type(temperature)}"
+            )
+        if not not isinstance(timestamp, int):
+            raise ValueError(
+                "Invalid timestamp type - expected int, got {type(timestamp)}"
+            )
 
         if station_name not in self.stations:
             self.stations[station_name] = WeatherStation(station_name)
