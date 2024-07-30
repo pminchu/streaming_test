@@ -83,10 +83,15 @@ class WeatherDataProcessor:
             raise ValueError("No data to reset.")
 
         response = {"type": RESET_COMMAND, "asOf": self.latest_timestamp}
+
+        self.reset_weather_data()
+
+        return response
+
+    def reset_weather_data(self) -> None:
         self.stations.clear()
         self.latest_timestamp = None
         logger.info("Reset all weather station data")
-        return response
 
     def handle_message(self, message: dict[str, Any]) -> dict[str, Any] | None:
         """Handle incoming messages and route them to appropriate processing methods."""
