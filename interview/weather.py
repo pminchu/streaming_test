@@ -1,8 +1,9 @@
 """Module for processing weather data from multiple stations."""
 
 import logging
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from typing import Any, Generator, Iterable
+from collections import defaultdict
 from .constants import MESSAGE_TYPE_SAMPLE, MESSAGE_TYPE_CONTROL, COMMAND_SNAPSHOT, COMMAND_RESET
 
 # Set up logging
@@ -24,26 +25,49 @@ class WeatherStation:
     """Represents a weather station with high and low temperature records."""
 
     name: str
-    high: float = field(default=float("-inf"))
-    low: float = field(default=float("inf"))
+    _high: float = field(default=float("-inf"))
+    _low: float = field(default=float("inf"))
+
+    @property
+    def high(self) -> float:
+        """Get the highest recorded temperature."""
+        return self._high
+
+    @high.setter
+    def high(self, value: float) -> None:
+        """Set the highest recorded temperature."""
+        self._high = max(self._high, value)
+
+    @property
+    def low(self) -> float:
+        """Get the lowest recorded temperature."""
+        return self._low
+
+    @low.setter
+    def low(self, value: float) -> None:
+        """Set the lowest recorded temperature."""
+        self._low = min(self._low, value)
 
     def update(self, temperature: float) -> None:
         """Update the high and low temperatures for the station."""
-        self.high = max(self.high, temperature)
-        self.low = min(self.low, temperature)
+        self.high = temperature
+        self.low = temperature
 
         logger.info("Updated %s: high=%s, low=%s", self.name, self.high, self.low)
 
-    def to_dict(self) -> dict[str, float]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert the WeatherStation object to a dictionary."""
-        return asdict(self)
+        return {"name": self.name, "high": self.high, "low": self.low}
 
+    def __repr__(self) -> str:
+        """Return a string representation of the WeatherStation."""
+        return f"WeatherStation(name='{self.name}', high={self.high}, low={self.low})"
 
 class WeatherDataProcessor:
     """Processes weather data samples and generates snapshots."""
 
     def __init__(self) -> None:
-        self.stations: dict[str, WeatherStation] = {}
+        self.stations: defaultdict[str, WeatherStation] = defaultdict(lambda: WeatherStation(""))
         self.latest_timestamp: int | None = None
 
     def process_sample(self, sample: dict[str, Any]) -> None:
