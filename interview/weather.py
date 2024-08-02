@@ -1,21 +1,15 @@
-import json
+"""Module for processing weather data from multiple stations."""
+
 import logging
 from dataclasses import asdict, dataclass, field
 from typing import Any, Generator, Iterable
+from .constants import MESSAGE_TYPE_SAMPLE, MESSAGE_TYPE_CONTROL, COMMAND_SNAPSHOT, COMMAND_RESET
 
 # Set up logging
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
-
-
-# Constants
-class MessageTypes:
-    SAMPLE_TYPE = "sample"
-    CONTROL_TYPE = "control"
-    SNAPSHOT_COMMAND = "snapshot"
-    RESET_COMMAND = "reset"
 
 
 # Weather sample keys
@@ -27,6 +21,8 @@ SAMPLE_KEYS = {STATION_NAME, TEMPERATURE, TIMESTAMP}
 
 @dataclass
 class WeatherStation:
+    """Represents a weather station with high and low temperature records."""
+
     name: str
     high: float = field(default=float("-inf"))
     low: float = field(default=float("inf"))
@@ -36,7 +32,7 @@ class WeatherStation:
         self.high = max(self.high, temperature)
         self.low = min(self.low, temperature)
 
-        logger.info(f"Updated {self.name}: high={self.high}, low={self.low}")
+        logger.info("Updated %s: high=%s, low=%s", self.name, self.high, self.low)
 
     def to_dict(self) -> dict[str, float]:
         """Convert the WeatherStation object to a dictionary."""
@@ -44,6 +40,8 @@ class WeatherStation:
 
 
 class WeatherDataProcessor:
+    """Processes weather data samples and generates snapshots."""
+
     def __init__(self) -> None:
         self.stations: dict[str, WeatherStation] = {}
         self.latest_timestamp: int | None = None
@@ -66,14 +64,14 @@ class WeatherDataProcessor:
             raise ValueError("No data to snapshot.")
 
         snapshot = {
-            "type": MessageTypes.SNAPSHOT_COMMAND,
+            "type": COMMAND_SNAPSHOT,
             "asOf": self.latest_timestamp,
             "stations": {
                 name: station.to_dict() for name, station in self.stations.items()
             },
         }
 
-        logger.info(f"Generated snapshot: {snapshot}")
+        logger.info("Generated snapshot: %s", snapshot)
         return snapshot
 
     def process_reset(self) -> dict[str, Any]:
@@ -82,53 +80,50 @@ class WeatherDataProcessor:
             logger.warning("Attempted to reset with no data")
             raise ValueError("No data to reset.")
 
-        response = {"type": MessageTypes.RESET_COMMAND, "asOf": self.latest_timestamp}
+        response = {"type": COMMAND_RESET, "asOf": self.latest_timestamp}
         self.reset_weather_data()
         return response
 
     def reset_weather_data(self) -> None:
+        """Clear all weather station data and reset the latest timestamp."""
         self.stations.clear()
         self.latest_timestamp = None
         logger.info("Reset all weather station data")
 
     def handle_message(self, message: dict[str, Any]) -> dict[str, Any] | None:
         """Handle incoming messages and route them to appropriate processing methods."""
-        match message:
-            case {"type": MessageTypes.SAMPLE_TYPE}:
-                self.process_sample(message)
-                return None
-            case {
-                "type": MessageTypes.CONTROL_TYPE,
-                "command": MessageTypes.SNAPSHOT_COMMAND,
-            }:
+        if "type" not in message:
+            raise ValueError("Message is missing 'type' field")
+
+        if message["type"] == MESSAGE_TYPE_SAMPLE:
+            self.process_sample(message)
+            return None
+        if message["type"] == MESSAGE_TYPE_CONTROL:
+            if "command" not in message:
+                raise ValueError("Control message is missing 'command' field")
+            if message["command"] == COMMAND_SNAPSHOT:
                 return self.process_snapshot()
-            case {
-                "type": MessageTypes.CONTROL_TYPE,
-                "command": MessageTypes.RESET_COMMAND,
-            }:
+            if message["command"] == COMMAND_RESET:
                 return self.process_reset()
-            case {"type": unknown_type}:
-                msg = f"Unknown message type: {unknown_type}"
-                logger.error(msg)
-                raise ValueError(msg)
-            case _:
-                msg = f"Unhandled message format: {message}"
-                logger.error(msg)
-                raise ValueError(msg)
+            raise ValueError(f"Unknown control command: {message['command']}")
+        raise ValueError(f"Unknown message type: {message['type']}")
 
     def update_station(self, station_name: str, temperature: int | float) -> None:
+        """Update or create a weather station with new temperature data."""
         if station_name not in self.stations:
             self.stations[station_name] = WeatherStation(station_name)
-            logger.info(f"Created new weather station: station_name")
+            logger.info("Created new weather station: %s", station_name)
 
         self.stations[station_name].update(temperature)
 
     def update_latest_timestamp(self, timestamp: int) -> None:
+        """Update the latest timestamp if the new timestamp is more recent."""
         if self.latest_timestamp is None or timestamp > self.latest_timestamp:
             self.latest_timestamp = timestamp
-            logger.info(f"Updated latest timestamp to {self.latest_timestamp}")
+            logger.info("Updated latest timestamp to %s", self.latest_timestamp)
 
     def validate_weather_sample(self, sample: dict[str, Any]) -> None:
+        """Validate the format and types of a weather sample."""
         if not all(key in sample for key in SAMPLE_KEYS):
             raise ValueError(
                 f"Invalid sample format - missing one or more key(s) {SAMPLE_KEYS}."
@@ -136,11 +131,13 @@ class WeatherDataProcessor:
 
         if not isinstance(sample["temperature"], (int, float)):
             raise ValueError(
-                f"Invalid temperature type - expected (int, float), got {type(sample['temperature'])}"
+                f"Invalid temperature type - expected (int, float), "
+                f"got {type(sample['temperature'])}"
             )
         if not isinstance(sample["timestamp"], int):
             raise ValueError(
-                f"Invalid timestamp type - expected int, got {type(sample['timestamp'])}"
+                f"Invalid timestamp type - expected int, "
+                f"got {type(sample['timestamp'])}"
             )
 
 
